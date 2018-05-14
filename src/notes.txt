@@ -1,0 +1,214 @@
+//  OPTIONAL PARAMETER:
+   optional parameter are specified as an object
+   [routerLink] =" ['/products', id , {name:productName , cost : price , startDate: productdate} ] "
+   Optional parameter should come after required parameter. These parameters are read same as required parameter using activatedRoute snapshot or abservable
+   The key is specific to the url so there is no name collision with any other url.
+
+
+// For query param see product details component
+
+ [queryParams]="{ key : value1 , key2 : value2 }"  Use this while passing query params to another route url with router link
+ this.router.navigate(['/products' , { queryParams : { filterBy : listFilter , name: ProductName } }  ])
+
+To send the query param back to the previos route use [preserveQueryParams]= "true " for version less than V4 
+<a [routerLink]= "['/products']"  queryparamsHandling = 'preserve'>BACK</a>
+this.router.navigate(['/products'] , {queryparamsHandling : 'preserve' })
+
+NAME collision can occur in queryparams
+Query params are always string.
+
+
+//Providing data with route 
+  1. Route paraeters - small amount of  data to display content like 'id'
+  2. Optional parameters  - optional, complex or multi faceded data
+  3. Query parameters - to retain data betweeen routes, eg. to retain search or filter
+  4. route's 'data' property - to pass a fxed data.
+     4.1 { path : 'products' , component : ProductComponent , data: {pageTitle : 'Product List'}}
+     4.2 data property is static and wont change. It remains same throughout
+     4.3 this.pageTitle  = this.route.snapshot.data['pageTitle']; 
+  5. Resolver - get data first and then route
+  6. Use angular service.
+
+
+// Activating child routes
+
+1. Absolute Path :  <a [routerLink]="['/products', product.id , 'edit' , 'info']"> Info</a>
+                     this.router.navigate(['/products', this.product.id , 'edit' , 'info'])
+
+2.Relative path :  <a [routerLink] ="['info']">Info</a>
+                   this.router.navigate(['info'],{relativeTo: this.route})    // where route is activatedRoute
+
+
+// Grouping components
+   1. better organisation
+   2.Share resolvers and guards
+   3.Lazy loading
+
+// Child routes 
+   1. Child routes appear inside the router outlet of the parent's template.
+   2. If we want the grouped components to appear in router outlet at a higher level, Then 
+   3. Then group the components inside a componentLess route
+      Eg.
+      RouterModule.forChild(
+      [
+        {
+          path: 'products',
+        
+          children: [
+            {
+              path: '',
+              component: ProductListComponent,
+             
+            },
+            {
+              path: ':id',
+              component: ProductDetailComponent,
+              resolve: { product: ProductResolver }
+            },
+            {
+              path: ':id/edit',
+              component: ProductEditComponent,
+              resolve: { product: ProductResolver },
+              children: [
+
+                { path: '', redirectTo: 'info', pathMatch: 'full' },
+                { path: 'info', component: ProductEditInfoComponent },
+                { path: 'tags', component: ProductEditTagsComponent }
+              ]
+            }
+          ]
+        }
+
+      ]
+    )
+
+    //Styling a selected Route 
+
+    1. <a [routerLink] ="['/products']" routerLinkActive ="class1 class2 class3 classSoOn"
+    2. Dont need square bracket around routerLinkActive as we are assigning string
+
+    //Reactibg to routing events
+
+    1. Use Observable   this.router.events.subscribe(
+       (routerEvent:  Event) =>{
+         if(routerEvent instanceOf NavigationStart){
+
+         }
+       }
+    )
+
+
+    //Secondary routes
+    1. Multiple routes dispalyed at the same time and in same level of hirearcy is know as 
+         secondary/peer/sibling/auxiliary routes.
+    2. We can have any number of secondary outlet in same level but each secondary outlet must have a unique name.
+    3. <router-outlet name="popup"></router-outlet>
+    4. Configuring:
+         RouterModule.forChild([
+           {
+             path:'messages',  // when path is messages
+             component: MessageComponent, // This component will be placed
+             outlet: 'popup' // In the outlet with name popup
+           }
+         ])
+    5. Activating secondary route:
+
+     [routerLink]= "[ { outlets: { popup : ['messages'] }  }]"
+
+     this.router.navigate([ { outlets: { popup : ['messages']} }     ])
+
+   6. The url that appear is as follows: 
+      http://localhost:3000/products(popup:messages)
+     http://localhost:3000/products/1(popup:messages)?filterBy=&showImage=false 
+      Even if primary url changes the secondary outlet url does not if not activated by another route.
+
+  7. By default primary router outlet has a name 'primary'. You can activate both primary and secondary outlet ay the same time
+
+  this.router.navigate( {
+    outlets:{
+      primary : ['/products],
+      popup : ['messages]
+    }
+  })
+  8.clearing: 
+        [routerLink]= "[ { outlets: { popup : null }  }]"
+
+     this.router.navigate([ { outlets: { popup : null} }     ])
+
+     
+
+     //GUARDS:
+
+     1. canActivate
+
+     2. canDEactivate
+
+     3. canActivateChild
+
+     4. canLoad
+
+     5. resolve
+
+
+     1.1  Guards have to be registerd at module level and not component level.
+     1.2  Guard is a service that implments appropriate interface as per the guard type.
+     1.4 A guard can return a simple boolean , promise or Observable.
+     1.5 A grouped component can share a guard, if that guard is applied to th parent.
+     1.6 It can return a boolean/Observable/Promise.
+     1.7 The canAvtivate parameter in path defination takes an array of comma seperated guard .
+     1.8 resolvers run after route guards, Therefore route guards do no have access to prefetched data.
+     1.9 USe service to store the data that all can use.
+
+     2.1 Checks before leaving a route
+     2.2 CAnDeactivate is a generic interface. That means it needs a generic parameter. The generic parameter tells the
+          type of component that id going to use this.
+
+     3.1 CanActivateChild guard executes when the child routes change, Even when there is change only in route parameters.
+     3.2 CanActivate will not execute if onlt child routes change.
+
+
+
+     //LAZY LOADING :
+        1. The components should be in a feature module.
+        2. The routes should be grouped inside a singlr parent.
+        3. The module is not imported in any other module.
+
+        4. Configure the single parent route , this should be defined in a module which is already loaded like app module
+              {
+
+              path:'products'
+              loadChildren :'app/products/product.module#ProductModule'
+              //loadChildren : 'filePath relative to the index.html# Name of the module class'
+              ----
+              ---
+               children:[]
+
+              }
+
+        5. canLoad guard can be used before loading asyn route. The module will not be loaded if it does not pass the guard.
+          The module is loaded and then any canActivate guard works.
+
+          5.1 canLoad can return a boolean/Onservable/Promise
+          5.2 canLoad just get one parameter that is route. Use route.path to get the url.
+
+       6. You can preload the lazy module. This is known as eager lazy loading.
+         6.1 This is useful when you know that the module wil be used.
+         6.2 Not useful for module seldom used or say admin feature.
+         6.3    6.3.1. No preloading ( default ) 6.3.2 Preload All 6.3.3 Custom
+
+                6.3.2.1  Preload All can be done by specifying the parameter of for Root eg.
+                      RouterModule.forRoot([
+                        { path: 'welcome', component: WelcomeComponent },
+                       // Added for lazy loading
+                        {path :'products' ,loadChildren:'app/products/product.module#ProductModule', canLoad:[ProductGuard]},
+                        { path: '', redirectTo: 'welcome', pathMatch: 'full' },
+                        { path: '**', component: PageNotFoundComponent }
+                    ] , { preloadingStrategy : PreloadAllModules }),
+
+
+                    6.3.3.1   You can create a custom strategy by creating a service which implements preloadingStrategy.
+                    6.3.3.2   Since this is going to a service, you have to register in the modules providers array.
+                    6.3.3.2   Use the route defination data property to select which lazy module is to be loaded.
+                    6.3.3.3    Then set the preloadingStrategy to  the service class name Eg. preloadingStrategy : SelectiveLoading          
+
+          6.4 canLoad guard blocks preloading , So you can change canLoad to CanActivate.
